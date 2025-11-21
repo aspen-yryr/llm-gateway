@@ -1,0 +1,9 @@
+namespace: llm-gateway
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+configMapGenerator:
+  - name: litellm-config-file
+    files:
+      - ./config/litellm_config.yaml
