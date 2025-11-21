@@ -3,7 +3,14 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
+  - postgres-service.yaml
+  - postgres-statefulset.yaml
 configMapGenerator:
   - name: litellm-config-file
     files:
       - ./config/litellm_config.yaml
+
+secretGenerator:
+  - name: postgres-secret
+    envs:
+      - ./config/postgres_secret.local
