@@ -1,6 +1,7 @@
 {
   "editor.formatOnSave": true,
   "files.insertFinalNewline": true,
+  "files.eol": "\n",
   "[yaml]": {
     "editor.defaultFormatter": "redhat.vscode-yaml",
     "editor.insertSpaces": true,
