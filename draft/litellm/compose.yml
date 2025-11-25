@@ -1,0 +1,69 @@
+services:
+  litellm:
+    build:
+      context: .
+      args:
+        target: runtime
+    image: ghcr.io/berriai/litellm:main-stable
+    #########################################
+    ## Uncomment these lines to start proxy with a config.yaml file ##
+    volumes:
+     - ./litellm_config.yaml:/app/config.yaml
+    command:
+     - "--config=/app/config.yaml"
+    ##############################################
+    ports:
+      - "4000:4000" # Map the container port to the host, change the host port if necessary
+    environment:
+      # DATABASE_URL: "postgresql://llmproxy:dbpassword9090@db:5432/litellm"
+      DATABASE_URL: "${DB_URL?error: DB_URL not set}?schema=${LITELLM_DB_SCHEMA?error: LITELLM_DB_SCHEMA not set}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY?error: OPENAI_API_KEY not set}"
+      STORE_MODEL_IN_DB: "True" # allows adding models to proxy via UI
+      LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY?error: LITELLM_MASTER_KEY not set}"
+      LITELLM_SALT_KEY: "${LITELLM_SALT_KEY?error: LITELLM_SALT_KEY not set}"
+    # env_file:
+    #   - .env # Load local .env file
+    depends_on:
+      - db  # Indicates that this service depends on the 'db' service, ensuring 'db' starts first
+    healthcheck:  # Defines the health check configuration for the container
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 http://localhost:4000/health/liveliness || exit 1" ]  # Command to execute for health check
+      interval: 30s  # Perform health check every 30 seconds
+      timeout: 10s   # Health check command times out after 10 seconds
+      retries: 3     # Retry up to 3 times if health check fails
+      start_period: 40s  # Wait 40 seconds after container start before beginning health checks
+
+  db:
+    image: postgres:17.5
+    restart: always
+    environment:
+      POSTGRES_DB: "${DB_NAME?error: DB_NAME not set}"
+      POSTGRES_USER: "${DB_USER?error: DB_USER not set}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD?error: DB_PASSWORD not set}"
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data # Persists Postgres data across container restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${DB_NAME?error: DB_NAME not set} -U ${DB_USER?error: DB_USER not set}"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+    restart: always
+
+volumes:
+  prometheus_data:
+    driver: local
+  db_data:
+    name: litellm_db_data

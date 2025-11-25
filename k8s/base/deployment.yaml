@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm-deployment
+  labels:
+    app: litellm
+spec:
+  selector:
+    matchLabels:
+      app: litellm
+  template:
+    metadata:
+      labels:
+        app: litellm
+    spec:
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:v1.79.3-stable
+          args:
+            - "--config"
+            - "/app/proxy_server_config.yaml"
+            - "--num_workers"
+            - "1"
+            - "--max_requests_before_restart"
+            - "10000"
+          ports:
+            - containerPort: 4000
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/proxy_server_config.yaml
+              subPath: litellm_config.yaml
+          env:
+            - name: LITELLM_MODE
+              value: "PRODUCTION"
+          resources:
+            requests:
+              memory: "500Mi"
+              cpu: "1"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+      volumes:
+        - name: config-volume
+          configMap:
+            name: litellm-config-file
